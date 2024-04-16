@@ -1,7 +1,7 @@
 use egui::{vec2, Align2, Color32, FontId, PointerButton, Stroke, Vec2};
 use egui::{Painter, Response};
 use gpx::errors::GpxError;
-use gpx::Gpx;
+use gpx::{Gpx, Waypoint};
 use std::io::Read;
 use walkers::{Plugin, Position, Projector};
 
@@ -56,16 +56,22 @@ struct GpxIndex {
 
 impl Plugin for &mut WalkerGpx {
     fn run(&mut self, response: &Response, painter: Painter, projector: &Projector) {
-        let clicked_at_screen =
-            if !response.changed() && response.clicked_by(egui::PointerButton::Primary) {
-                response.interact_pointer_pos()
-            } else {
-                None
-            };
+        let mut clicked_at_screen = None;
+        if !response.changed() && response.clicked_by(egui::PointerButton::Primary) {
+            clicked_at_screen = response.interact_pointer_pos();
+
+            if let (Some(s), Some(p)) = (self.select, clicked_at_screen) {
+                let p = projector.unproject(p - response.rect.center());
+
+                *self.gpx.tracks[s.track].segments[s.segment].points[s.waypoint].point_mut() =
+                    geo_types::Point::new(p.lon(), p.lat());
+
+                self.select = None;
+                clicked_at_screen = None;
+            }
+        }
 
         let at_screen = painter.ctx().pointer_latest_pos();
-
-        dbg!(&at_screen, &self.select);
 
         let mut current_index = GpxIndex::default();
 
@@ -82,7 +88,7 @@ impl Plugin for &mut WalkerGpx {
                         .clone()
                         .filter(|&a| a == current_index)
                         .and(at_screen)
-                        .map(|p| dbg!(projector.unproject(p - response.rect.center())))
+                        .map(|p| projector.unproject(p - response.rect.center()))
                         .unwrap_or(Position::from_lon_lat(
                             waypoint.point().x(),
                             waypoint.point().y(),

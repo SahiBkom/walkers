@@ -6,7 +6,8 @@ version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gpx = "0.9.1"
+gpx =  {git = "ssh://git@github.com/SahiBkom/gpx.git", branch = "add_point_mut_to_waypoint"}
+geo-types = "0.7.11"
 walkers = { path = "../walkers" }
 eframe.workspace = true
 egui.workspace = true
