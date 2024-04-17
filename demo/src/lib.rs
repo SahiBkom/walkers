@@ -114,8 +114,7 @@ impl MyApp {
             images_plugin_data,
             click_watcher: Default::default(),
             gpx: walkers_gpx::WalkerGpx::read(
-                include_str!("/home/johan/proj/map/walkers/walkers_gpx/assets/st_joris.gpx")
-                    .as_bytes(),
+                include_str!("../../walkers_gpx/assets/st_joris.gpx").as_bytes(),
             )
             .unwrap(),
         }
