@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - walkers_gpx
 
 permissions:
   contents: write
@@ -23,7 +24,7 @@ jobs:
       - name: Build
         run: env -C demo_web trunk build --release --public-url "${GITHUB_REPOSITORY#*/}"
       - name: Deploy
-        uses: JamesIves/github-pages-deploy-action@v4
+        uses: SahiBkom/github-pages-deploy-action@v4
         with:
           folder: demo_web/dist
           single-commit: true
