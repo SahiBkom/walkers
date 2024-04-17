@@ -1,7 +1,7 @@
-use egui::{vec2, Align2, Color32, FontId, PointerButton, Stroke, Vec2};
+use egui::{Color32, FontId, Stroke, Vec2};
 use egui::{Painter, Response};
 use gpx::errors::GpxError;
-use gpx::{Gpx, Waypoint};
+use gpx::Gpx;
 use std::io::Read;
 use walkers::{Plugin, Position, Projector};
 
@@ -85,7 +85,6 @@ impl Plugin for &mut WalkerGpx {
 
                     let position = self
                         .select
-                        .clone()
                         .filter(|&a| a == current_index)
                         .and(at_screen)
                         .map(|p| projector.unproject(p - response.rect.center()))
@@ -115,7 +114,7 @@ impl Plugin for &mut WalkerGpx {
 
                     if let Some(clicked_at_screen) = clicked_at_screen {
                         if clicked_at_screen.distance(screen_position.to_pos2()) < radius {
-                            self.select = Some(current_index.clone());
+                            self.select = Some(current_index);
                             println!(" Select {:?}", self.select)
                         }
                     }
