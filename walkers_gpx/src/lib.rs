@@ -1,4 +1,7 @@
-use egui::{Color32, FontId, Stroke, Vec2};
+mod style;
+
+use crate::style::Style;
+use egui::{Color32, Pos2, Vec2};
 use egui::{Painter, Response};
 use gpx::errors::GpxError;
 use gpx::Gpx;
@@ -9,32 +12,6 @@ pub struct WalkerGpx {
     gpx: Gpx,
     style: Style,
     select: Option<GpxIndex>,
-}
-
-/// Visual style of the place.
-#[derive(Clone)]
-pub struct Style {
-    pub label_font: FontId,
-    pub label_color: Color32,
-    pub label_background: Color32,
-    pub symbol_font: FontId,
-    pub symbol_color: Color32,
-    pub symbol_background: Color32,
-    pub symbol_stroke: Stroke,
-}
-
-impl Default for Style {
-    fn default() -> Self {
-        Self {
-            label_font: FontId::proportional(12.),
-            label_color: Color32::from_gray(200),
-            label_background: Color32::BLACK.gamma_multiply(0.8),
-            symbol_font: FontId::proportional(14.),
-            symbol_color: Color32::BLACK.gamma_multiply(0.8),
-            symbol_background: Color32::WHITE.gamma_multiply(0.8),
-            symbol_stroke: Stroke::new(2., Color32::BLACK.gamma_multiply(0.8)),
-        }
-    }
 }
 
 impl WalkerGpx {
@@ -79,7 +56,7 @@ impl Plugin for &mut WalkerGpx {
             current_index.track = i;
             for (i, segment) in track.segments.iter().enumerate() {
                 current_index.segment = i;
-                let mut prev_screen_position: Option<_> = None::<Vec2>;
+                let mut prev_screen_position: Option<_> = None::<Pos2>;
                 for (i, waypoint) in segment.points.iter().enumerate() {
                     current_index.waypoint = i;
 
@@ -93,36 +70,36 @@ impl Plugin for &mut WalkerGpx {
                             waypoint.point().y(),
                         ));
 
-                    // let position =
-                    //     Position::from_lon_lat(waypoint.point().x(), waypoint.point().y());
-                    let screen_position = projector.project(position);
-
-                    let radius = 10.;
+                    let screen_position = projector.project(position).to_pos2();
 
                     let hovered = response
                         .hover_pos()
-                        .map(|hover_pos| hover_pos.distance(screen_position.to_pos2()) < radius)
+                        .map(|hover_pos| {
+                            hover_pos.distance(screen_position) < self.style.track.point.radius
+                        })
                         .unwrap_or(false);
 
-                    painter.circle(
-                        screen_position.to_pos2(),
-                        10.,
-                        //     self.style.symbol_background,
-                        Color32::BLACK.gamma_multiply(if hovered { 0.5 } else { 0.2 }),
-                        self.style.symbol_stroke,
-                    );
+                    let sp = self.style.track.select_point(hovered);
+                    painter.circle(screen_position, sp.radius, sp.fill_color, sp.stroke);
 
                     if let Some(clicked_at_screen) = clicked_at_screen {
-                        if clicked_at_screen.distance(screen_position.to_pos2()) < radius {
+                        if clicked_at_screen.distance(screen_position)
+                            < self.style.track.point.radius
+                        {
                             self.select = Some(current_index);
                             println!(" Select {:?}", self.select)
                         }
                     }
 
                     if let Some(prev_screen_position) = prev_screen_position {
+                        let hover = response
+                            .hover_pos()
+                            .map(|pos| on_segment(prev_screen_position, screen_position, pos))
+                            .unwrap_or(false);
+
                         painter.line_segment(
-                            [prev_screen_position.to_pos2(), screen_position.to_pos2()],
-                            self.style.symbol_stroke,
+                            [prev_screen_position, screen_position],
+                            self.style.track.select_line(hover).stroke,
                         );
                     }
 
@@ -131,6 +108,24 @@ impl Plugin for &mut WalkerGpx {
             }
         }
     }
+}
+
+/// todo add distance to line
+pub fn on_segment(a: Pos2, b: Pos2, c: Pos2) -> bool {
+    let min = a.min(b);
+    let max = a.max(b);
+    if !(c.x < max.x && c.x > min.x && c.y < max.y && c.y > min.y) {
+        return false;
+    }
+
+    if (a.distance(c) < 0.1) || (b.distance(c) < 0.1) {
+        return true;
+    }
+
+    let ac = (a.y - c.y) / (a.x - c.x); // calc hoek
+    let bc = (b.y - c.y) / (b.x - c.x);
+
+    (ac - bc).abs() < 0.1
 }
 
 pub fn add(left: usize, right: usize) -> usize {
